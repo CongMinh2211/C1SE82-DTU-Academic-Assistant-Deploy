@@ -1,0 +1,13 @@
+FROM node:24.22.1-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates libgomp1 tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts && npm rebuild better-sqlite3 esbuild
+COPY tsconfig.json ./
+COPY BE ./BE
+COPY FE ./FE
+COPY migrations ./migrations
+COPY scripts ./scripts
+ENV NODE_ENV=production API_HOST=0.0.0.0 API_PORT=10000 APP_DATA_DIR=/tmp/dtu-runtime
+EXPOSE 10000
+CMD ["node","--import","tsx","BE/server.ts"]
