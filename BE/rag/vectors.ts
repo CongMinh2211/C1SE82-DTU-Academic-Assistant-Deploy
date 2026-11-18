@@ -4,6 +4,7 @@ import { PgVector } from "@mastra/pg";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { dataDir, embeddingDimension } from "../config";
+import { postgresConnectionUrl } from "../postgres-connection";
 
 const globalVector = globalThis as unknown as {
   dtuVectors?: LibSQLVector | PgVector;
@@ -15,10 +16,7 @@ export const vectorIndex = "academic_e5_v1";
 const localVectorUrl = () =>
   `file:${path.join(dataDir, "vectors.sqlite").replaceAll("\\", "/")}`;
 function verifiedConnection(value: string) {
-  // Yêu cầu xác thực chứng chỉ TLS cho kết nối PostgreSQL cloud.
-  const url = new URL(value);
-  url.searchParams.set("sslmode", "verify-full");
-  return url.href;
+  return postgresConnectionUrl(value);
 }
 export async function vectors() {
   // Local dùng LibSQL; khi có DATABASE_URL, dùng pgvector qua kết nối TLS.
