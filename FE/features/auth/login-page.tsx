@@ -122,8 +122,13 @@ export function LoginPage({
         callbackURL: loginReturn,
         errorCallbackURL: loginReturn,
       });
-      if (result.error)
-        throw new Error("Chưa thể đăng nhập với Google. Vui lòng thử lại.");
+      if (result.error) {
+        console.error("Google sign-in error details:", result.error);
+        throw new Error(
+          result.error.message ||
+            "Chưa thể đăng nhập với Google. Vui lòng kiểm tra cấu hình OAuth hoặc thử lại.",
+        );
+      }
     } catch (error) {
       setError(
         error instanceof Error

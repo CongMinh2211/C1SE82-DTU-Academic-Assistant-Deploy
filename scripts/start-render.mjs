@@ -39,13 +39,14 @@ async function main() {
     process.env.BETTER_AUTH_URL = process.env.RENDER_EXTERNAL_URL;
   }
   if (!process.env.BETTER_AUTH_URL) {
-    process.env.BETTER_AUTH_URL = `http://localhost:${port}`;
+    process.env.BETTER_AUTH_URL = "https://c1se82-dtu-academic-assistant-deploy.onrender.com";
   }
   console.log(`[Render Orchestrator] BETTER_AUTH_URL: ${process.env.BETTER_AUTH_URL}`);
 
   // 1. Khởi động Backend (BE/server.ts) ở cổng 8001
   const beEnv = {
     ...process.env,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     API_PORT: String(bePort),
     API_HOST: "127.0.0.1",
     NODE_ENV: "production",
