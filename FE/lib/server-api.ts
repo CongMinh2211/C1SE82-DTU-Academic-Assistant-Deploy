@@ -14,8 +14,13 @@ async function read<T>(path: string, cookie = ""): Promise<T> {
 }
 type Session = Awaited<ReturnType<ReturnType<typeof getAuth>["api"]["getSession"]>>;
 export const pageSession = cache(async (): Promise<Session> => {
-  const requestHeaders = await headers();
-  return read<Session>("/api/auth/get-session", requestHeaders.get("cookie") || "");
+  try {
+    const requestHeaders = await headers();
+    return await read<Session>("/api/auth/get-session", requestHeaders.get("cookie") || "");
+  } catch {
+    // Tránh crash Next.js SSR khi Backend chưa sẵn sàng hoặc kết nối bị gián đoạn.
+    return null as Session;
+  }
 });
 export const publicAuthConfig = () => read<{ googleEnabled: boolean; otpEnabled: boolean }>("/api/public/auth-config");
 export const readConversationShare = (token: string) => read<Awaited<ReturnType<typeof readShare>>>(`/api/public/shares/${encodeURIComponent(token)}`);

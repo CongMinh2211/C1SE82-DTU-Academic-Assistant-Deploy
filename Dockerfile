@@ -19,4 +19,4 @@ COPY --from=build --chown=node:node /app/tsconfig.json /app/package.json /app/pa
 RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 3000
-CMD ["node","node_modules/next/dist/bin/next","start","FE","--hostname","0.0.0.0"]
+CMD ["node","scripts/start-render.mjs"]
