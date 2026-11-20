@@ -54,5 +54,8 @@ const server = createServer(async (incoming, outgoing) => {
 });
 server.requestTimeout = 180000;
 server.headersTimeout = 30000;
-server.listen(port, process.env.API_HOST || "127.0.0.1", () => console.log(`Backend sẵn sàng tại cổng ${port}`));
+server.listen(port, process.env.API_HOST || "127.0.0.1", () => {
+  console.log(`Backend sẵn sàng tại cổng ${port}`);
+  import("./quick-google").then((m) => m.ensureAuthTables()).catch(() => {});
+});
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => server.close());

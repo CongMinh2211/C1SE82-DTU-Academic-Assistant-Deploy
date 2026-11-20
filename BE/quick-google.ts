@@ -1,6 +1,7 @@
 // Mục đích file: Cung cấp API đăng nhập nhanh Google (Student & Admin) không phụ thuộc Google Cloud Console.
 import { getAuth } from "./auth";
 import { db, row } from "./db";
+import { getMigrations } from "better-auth/db/migration";
 
 export const QUICK_ACCOUNTS = {
   student: {
@@ -23,8 +24,24 @@ export const QUICK_ACCOUNTS = {
   },
 } as const;
 
+let tablesReady = false;
+export async function ensureAuthTables() {
+  if (tablesReady) return;
+  try {
+    const auth = getAuth();
+    const migrations = await getMigrations(auth.options);
+    await migrations.runMigrations();
+    tablesReady = true;
+  } catch (err) {
+    console.warn("Lưu ý migration bảng auth:", err);
+    tablesReady = true;
+  }
+}
+
 export async function handleQuickGoogleLogin(request: Request): Promise<Response> {
   try {
+    await ensureAuthTables();
+
     let targetKey: "student" | "admin" = "student";
     try {
       const body = (await request.json()) as { role?: string };
