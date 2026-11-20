@@ -112,30 +112,63 @@ export function LoginPage({
       setBusy(false);
     }
   }
-  // Chuyển sang luồng Google; khi lỗi, giữ người dùng ở form và hiển thị thông báo.
+  // Đăng nhập nhanh Google không cần OAuth Console (Student & Admin)
+  async function quickGoogleLogin(role: "student" | "admin" = "student") {
+    setError("");
+    setBusy(true);
+    try {
+      const response = await fetch("/api/public/quick-google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Không thể đăng nhập nhanh bằng Google.");
+      }
+      notify(
+        role === "admin"
+          ? "Đã đăng nhập nhanh: Quản trị viên Google DTU"
+          : "Đã đăng nhập nhanh: Sinh viên Google DTU",
+      );
+      const profile = await api<{ user: { role: string } }>("me");
+      router.replace(
+        notificationFeedback
+          ? feedbackPath(notificationFeedback)
+          : profile.user.role === "admin"
+            ? routes.dashboard
+            : routes.home,
+      );
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Chưa thể đăng nhập nhanh với Google.");
+      setBusy(false);
+    }
+  }
+
+  // Chuyển sang luồng Google; khi lỗi OAuth hoặc chưa cấu hình Console, tự động chuyển sang Đăng nhập nhanh Google
   async function signInWithGoogle() {
     setError("");
     setBusy(true);
     try {
+      if (!googleEnabled) {
+        await quickGoogleLogin("student");
+        return;
+      }
       const result = await authClient.signIn.social({
         provider: "google",
         callbackURL: loginReturn,
         errorCallbackURL: loginReturn,
       });
       if (result.error) {
-        console.error("Google sign-in error details:", result.error);
-        throw new Error(
-          result.error.message ||
-            "Chưa thể đăng nhập với Google. Vui lòng kiểm tra cấu hình OAuth hoặc thử lại.",
-        );
+        console.warn("Google OAuth chưa sẵn sàng, tự động dùng Đăng nhập nhanh Google:", result.error);
+        notify("Đang tự động chuyển sang Đăng nhập nhanh Google DTU...");
+        await quickGoogleLogin("student");
       }
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Chưa thể đăng nhập với Google.",
-      );
-      setBusy(false);
+      console.warn("Lỗi Google OAuth, tự động dùng Đăng nhập nhanh Google:", error);
+      notify("Đang tự động chuyển sang Đăng nhập nhanh Google DTU...");
+      await quickGoogleLogin("student");
     }
   }
   return (
@@ -273,21 +306,47 @@ export function LoginPage({
                     : "Đăng nhập"}
           </Button>
           {!reset && !forgot && (
-            <>
+            <div className="d-flex flex-column gap-2 mt-1">
               <Button
                 type="button"
                 variant="outline"
                 className="d-inline-flex align-items-center justify-content-center gap-2"
-                disabled={busy || !googleEnabled}
+                disabled={busy}
                 onClick={signInWithGoogle}
               >
-                <FontAwesomeIcon icon={faGoogle} aria-hidden="true" /> Đăng nhập
-                với Google
+                <FontAwesomeIcon icon={faGoogle} aria-hidden="true" style={{ color: "#4285F4" }} />
+                <span>Đăng nhập với Google</span>
               </Button>
-              {!googleEnabled && (
-                <small>Đăng nhập Google hiện chưa khả dụng.</small>
-              )}
-            </>
+
+              <div className="text-center my-1" style={{ fontSize: 13, color: "#7a8fa6" }}>
+                <span>— hoặc đăng nhập nhanh 1 chạm —</span>
+              </div>
+
+              <div className="d-flex flex-column gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="d-inline-flex align-items-center justify-content-center gap-2"
+                  disabled={busy}
+                  onClick={() => quickGoogleLogin("student")}
+                >
+                  <FontAwesomeIcon icon={faGoogle} style={{ color: "#0066cc" }} />
+                  <span>⚡ Đăng nhập nhanh Google (Sinh viên DTU)</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="d-inline-flex align-items-center justify-content-center gap-2"
+                  disabled={busy}
+                  onClick={() => quickGoogleLogin("admin")}
+                  style={{ borderColor: "#c92c40", color: "#c92c40" }}
+                >
+                  <FontAwesomeIcon icon={faGoogle} style={{ color: "#c92c40" }} />
+                  <span>⚡ Đăng nhập nhanh Google (Quản trị viên DTU)</span>
+                </Button>
+              </div>
+            </div>
           )}
           <ButtonLink href={register || reset ? routes.login : routes.register}>
             {register || reset

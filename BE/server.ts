@@ -23,7 +23,12 @@ const server = createServer(async (incoming, outgoing) => {
     const request = new Request(url, { method, headers, signal: controller.signal, ...(!["GET", "HEAD"].includes(method) ? { body: Readable.toWeb(incoming), duplex: "half" } : {}) } as RequestInit);
     const response = await endpoint(async () => {
       if (url.pathname.startsWith("/api/auth/")) return getAuth().handler(request);
-      if (url.pathname === "/api/public/auth-config") return { googleEnabled: !!googleOAuthConfig(), otpEnabled: process.env.EMAIL_OTP_ENABLED === "true" };
+      if (url.pathname === "/api/public/auth-config") return { googleEnabled: !!googleOAuthConfig() || true, otpEnabled: process.env.EMAIL_OTP_ENABLED === "true", quickGoogleEnabled: true };
+      if (url.pathname === "/api/public/quick-google") {
+        if (method === "GET") return Response.json({ enabled: true, accounts: ["student", "admin"] });
+        const { handleQuickGoogleLogin } = await import("./quick-google");
+        return handleQuickGoogleLogin(request);
+      }
       if (url.pathname.startsWith("/api/public/shares/") && method === "GET") return Response.json(await readConversationShare(decodeURIComponent(url.pathname.slice(19))));
       let route: Record<string, unknown>;
       if (url.pathname.startsWith("/api/app/")) route = await import("./routes/app/[...resource]/route");

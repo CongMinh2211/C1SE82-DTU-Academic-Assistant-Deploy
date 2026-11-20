@@ -10,7 +10,15 @@ async function proxy(request: Request) {
   try {
     // Chuyển trực tiếp luồng upload, không đọc toàn bộ PDF vào bộ nhớ FE.
     const response = await fetch(target, { method: request.method, headers, body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body, duplex: "half", redirect: "manual", signal: request.signal } as RequestInit);
-    return new Response(response.body, { status: response.status, headers: response.headers });
+    const forwardHeaders = new Headers(response.headers);
+    const setCookies = response.headers.getSetCookie?.() || [];
+    if (setCookies.length > 0) {
+      forwardHeaders.delete("set-cookie");
+      for (const cookie of setCookies) {
+        forwardHeaders.append("set-cookie", cookie);
+      }
+    }
+    return new Response(response.body, { status: response.status, headers: forwardHeaders });
   } catch {
     return Response.json({ error: "Backend tạm thời không khả dụng." }, { status: 502 });
   }
