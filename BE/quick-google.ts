@@ -1,7 +1,6 @@
 // Mục đích file: Cung cấp API đăng nhập nhanh Google (Student & Admin) không phụ thuộc Google Cloud Console.
 import { getAuth } from "./auth";
-import { db, row, id, now } from "./db";
-import { hashPassword } from "@better-auth/utils/password";
+import { db, row } from "./db";
 
 export const QUICK_ACCOUNTS = {
   student: {
@@ -40,11 +39,9 @@ export async function handleQuickGoogleLogin(request: Request): Promise<Response
 
   // 1. Kiểm tra tài khoản trong bảng user
   const existingUser = await row<{ id: string; role?: string }>(
-    'SELECT id, role FROM "user" WHERE email = ?',
+    "SELECT id, role FROM user WHERE email = ?",
     target.email,
   );
-
-  const passwordHash = await hashPassword(target.password);
 
   if (!existingUser) {
     try {
@@ -58,12 +55,12 @@ export async function handleQuickGoogleLogin(request: Request): Promise<Response
       if (created?.user?.id) {
         if (target.role === "admin") {
           await db()
-            .prepare('UPDATE "user" SET role = \'admin\', "emailVerified" = 1 WHERE id = ?')
+            .prepare("UPDATE user SET role = 'admin', emailVerified = true WHERE id = ?")
             .run(created.user.id);
         } else {
           await db()
             .prepare(
-              'UPDATE "user" SET role = \'user\', "emailVerified" = 1, "studentCode" = ?, cohort = ?, major = ? WHERE id = ?',
+              "UPDATE user SET role = 'user', emailVerified = true, studentCode = ?, cohort = ?, major = ? WHERE id = ?",
             )
             .run(target.studentCode, target.cohort, target.major, created.user.id);
         }
@@ -72,49 +69,24 @@ export async function handleQuickGoogleLogin(request: Request): Promise<Response
       console.warn("Lưu ý khi tạo tài khoản Quick Google:", signUpErr);
     }
   } else {
-    // Đảm bảo mật khẩu và quyền khớp
-    const credAccount = await row<{ id: string }>(
-      'SELECT id FROM "account" WHERE "userId" = ? AND "providerId" = \'credential\'',
-      existingUser.id,
-    );
-    if (credAccount) {
-      await db()
-        .prepare('UPDATE "account" SET password = ? WHERE id = ?')
-        .run(passwordHash, credAccount.id);
-    } else {
-      await db()
-        .prepare(
-          'INSERT INTO "account" (id, "userId", "accountId", "providerId", password, "createdAt", "updatedAt") VALUES (?, ?, ?, ?, ?, ?, ?)',
-        )
-        .run(id(), existingUser.id, existingUser.id, "credential", passwordHash, now(), now());
-    }
-
+    // Nếu tài khoản đã tồn tại, cập nhật emailVerified và role cho đồng bộ
     if (target.role === "admin" && existingUser.role !== "admin") {
       await db()
-        .prepare('UPDATE "user" SET role = \'admin\', "emailVerified" = 1 WHERE id = ?')
+        .prepare("UPDATE user SET role = 'admin', emailVerified = true WHERE id = ?")
         .run(existingUser.id);
     } else {
       await db()
-        .prepare('UPDATE "user" SET "emailVerified" = 1 WHERE id = ?')
+        .prepare("UPDATE user SET emailVerified = true WHERE id = ?")
         .run(existingUser.id);
     }
   }
 
-  // 2. Chạy Better Auth sign-in chính thức để sinh session cookie hợp lệ
-  const origin = request.headers.get("origin") || new URL(request.url).origin;
-  const signInUrl = new URL("/api/auth/sign-in/email", request.url);
-  const signInHeaders = new Headers(request.headers);
-  signInHeaders.set("content-type", "application/json");
-  signInHeaders.set("origin", origin);
-
-  const signInRequest = new Request(signInUrl, {
-    method: "POST",
-    headers: signInHeaders,
-    body: JSON.stringify({
+  // 2. Gọi signInEmail với asResponse: true để trả về Response có đầy đủ header Set-Cookie
+  return auth.api.signInEmail({
+    body: {
       email: target.email,
       password: target.password,
-    }),
+    },
+    asResponse: true,
   });
-
-  return auth.handler(signInRequest);
 }
