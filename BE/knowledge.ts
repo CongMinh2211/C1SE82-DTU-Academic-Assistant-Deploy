@@ -337,9 +337,10 @@ export async function runNextJob() {
       revision.scope,
       revision.id,
     );
-    const vectorStore = await vectors();
+    const lexicalOnly = process.env.RAG_LEXICAL_ONLY === "true";
+    const vectorStore = lexicalOnly ? null : await vectors();
     // ID đoạn ổn định giúp lần xử lý lại cập nhật vector thay vì tạo bản trùng.
-    for (let i = 0; i < chunks.length; i += 16) {
+    for (let i = 0; vectorStore && i < chunks.length; i += 16) {
       await update("embedding", 20 + Math.round((65 * i) / chunks.length));
       const batch = chunks.slice(i, i + 16);
       const embeddings = await embedTexts(
@@ -401,6 +402,7 @@ export async function runNextJob() {
         revisionId: revision.id,
         pages: pages.length,
         chunks: chunks.length,
+        indexMode: lexicalOnly ? "lexical" : "hybrid",
       });
     })();
   } catch (error) {

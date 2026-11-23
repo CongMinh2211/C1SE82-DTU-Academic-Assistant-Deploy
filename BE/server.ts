@@ -57,5 +57,13 @@ server.headersTimeout = 30000;
 server.listen(port, process.env.API_HOST || "127.0.0.1", () => {
   console.log(`Backend sẵn sàng tại cổng ${port}`);
   import("./quick-google").then((m) => m.ensureAuthTables()).catch(() => {});
+  if (process.env.IN_PROCESS_INDEX_WORKER === "true") {
+    const tick = async () => {
+      try { const { runNextJob } = await import("./knowledge"); await runNextJob(); }
+      catch (error) { console.error("index_worker_failed", error instanceof Error ? error.name : "unknown"); }
+      setTimeout(tick, 5000).unref();
+    };
+    void tick();
+  }
 });
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => server.close());

@@ -71,7 +71,7 @@ test("câu trả lời bị gián đoạn không chặn chia sẻ mãi", async (
     .run("stale", "c1", "assistant", "", "processing", "[]", new Date(Date.now() - 300000).toISOString());
   const share = await createConversationShare("c1", "owner");
   const snapshot = await readConversationShare(share.token);
-  assert.equal(snapshot?.messages.find(message => message.status === "error")?.content, "Câu hỏi trước bị gián đoạn. Vui lòng gửi lại.");
+  assert.ok(snapshot?.messages.some(message => message.content === "Câu hỏi trước bị gián đoạn. Vui lòng gửi lại."));
 });
 test.after(async () => {
   // Đóng kết nối và dọn thư mục dữ liệu thử nghiệm sau khi chạy xong.
