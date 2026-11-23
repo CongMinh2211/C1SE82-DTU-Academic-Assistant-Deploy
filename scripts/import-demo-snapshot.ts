@@ -31,7 +31,7 @@ if (!local) {
   await pipeline(Readable.fromWeb(blob.stream as never), createWriteStream(archive,{mode:0o600}));
   const hash = createHash('sha256');
   for await (const b of createReadStream(archive)) hash.update(b);
-  if (hash.digest('hex') !== '54106600f28a9c23a0134121cdddddd37a4b22f06c11c8069c2f4524170ecd037') throw new Error('Checksum snapshot không khớp');
+  if (hash.digest('hex') !== '54106600f28a9c23a0134121cddddd37a4b22f06c11c8069c2f4524170ecd037') throw new Error('Checksum snapshot không khớp');
   execFileSync('tar',['-xzf',archive,'--no-same-owner','--no-same-permissions','-C',base]);
 }
 const db = new Database(path.join(base,'migration-academic.sqlite'),{readonly:true,fileMustExist:true});
