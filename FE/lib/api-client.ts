@@ -20,10 +20,11 @@ export async function api<T>(
     },
   });
   // API ứng dụng trả JSON cả khi thành công và khi lỗi nghiệp vụ.
-  const payload = await response.json();
+  const payload = await response.json().catch(() => null);
   // Ném lỗi để hook/component hiển thị trạng thái thất bại, không coi HTTP lỗi là dữ liệu hợp lệ.
   if (!response.ok)
-    throw new Error(payload.error || "Không thể kết nối với hệ thống.");
+    throw new Error(payload?.error || "Hệ thống tạm thời không phản hồi. Vui lòng thử lại.");
+  if (payload === null) throw new Error("Phản hồi từ hệ thống không hợp lệ. Vui lòng thử lại.");
   return payload as T;
 }
 export function useResource<T>(path: string | null, interval = 0) {

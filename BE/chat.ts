@@ -25,6 +25,8 @@ export async function conversationDetail(
     userId,
   );
   if (!conversation) throw new HttpError(404, "Không tìm thấy hội thoại.");
+  await db().prepare("UPDATE messages SET status='error',content=? WHERE conversation_id=? AND status='processing' AND created_at<? AND NOT EXISTS (SELECT 1 FROM chat_leases WHERE user_id=? AND expires_at>?)")
+    .run("Câu hỏi trước bị gián đoạn. Vui lòng gửi lại.", conversationId, new Date(Date.now() - 150000).toISOString(), userId, Date.now());
   // Khôi phục danh sách citation từ JSON theo đúng thứ tự tin nhắn đã lưu.
   const messages = (
     await rows<StoredMessage>(
