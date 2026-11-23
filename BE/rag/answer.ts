@@ -17,6 +17,8 @@ import {
   isRepair,
   obviousStudyTask,
   asksForContact,
+  conversationRecall,
+  accountNameReply,
 } from "./dialogue";
 import type { Turn } from "./dialogue";
 import {
@@ -158,17 +160,22 @@ export async function answerQuestion(
   web = true,
   signal?: AbortSignal,
   documentOnly = false,
+  accountName?: string,
 ): Promise<Answer> {
   // Ưu tiên các hướng dẫn và FAQ đã kiểm chứng trước khi gọi mô hình AI.
   signal?.throwIfAborted();
   const english = isEnglish(question);
+  const recalled = conversationRecall(question, history);
+  if (recalled) return {status:"conversation",content:recalled,citations:[],retrieval:[],reason:"conversation_recall",webStatus:"not_needed"};
+  const nameReply = accountNameReply(question, accountName);
+  if (nameReply) return {status:"conversation",content:nameReply,citations:[],retrieval:[],reason:"account_display_name",webStatus:"not_needed"};
   if (documentOnly) {
     // Không đi qua danh bạ dựng sẵn hoặc tìm web trong chế độ chỉ dùng tài liệu.
     return answerFromDocuments(question, {
       faq: lookupApprovedFaq,
       resolve: async () => {
         let resolved = tuitionFollowUp(question, history) || question;
-        if (history.length && resolved === question && !explicitTopicShift(question, history)) {
+        if ((history.length || /[\u0900-\u097f]/u.test(question)) && resolved === question && !explicitTopicShift(question, history)) {
           try {
             const plan = await planRequest(question, history, signal);
             if (plan.mode === "lookup" && plan.resolvedQuestion?.trim()) resolved = plan.resolvedQuestion;
@@ -191,6 +198,8 @@ export async function answerQuestion(
       ? previousQuestion.content : question;
   const lecturer = await lecturerProfileAnswer(lecturerQuestion, web, signal);
   if (lecturer) return lecturer;
+  const portal = portalAnswer(question);
+  if (portal) return portal;
   const missingDetail = missingQuestionDetail(question, history);
   if (missingDetail) return { status:"clarification", content:missingDetail, citations:[], retrieval:[], reason:"needs_detail", webStatus:"not_needed" };
   const faculty = facultyDirectoryAnswer(question);
@@ -204,8 +213,6 @@ export async function answerQuestion(
   if (guide) return guide;
   const campus = campusAnswer(question, history);
   if (campus) return campus;
-  const portal = portalAnswer(question);
-  if (portal) return portal;
   const quickReply = quickConversation(question);
   if (quickReply)
     return {
@@ -280,7 +287,15 @@ export async function answerQuestion(
                 searchQueries: [tuitionContext.slice(0, 120)],
               }
             : await planRequest(question, history, signal);
-    contextQuestion = history.length ? plan.resolvedQuestion : question;
+    // Câu Hindi cần câu truy vấn đã chuyển ngữ ngay cả khi là lượt đầu.
+    contextQuestion = history.length || /[\u0900-\u097f]/u.test(question) ? plan.resolvedQuestion : question;
+    // Với câu Hindi hỏi tiếp một giảng viên, chỉ dùng đường tắt khi tên đã
+    // chuyển ngữ và câu hỏi trước cùng xác định một hồ sơ đã công bố.
+    if (/[\u0900-\u097f]/u.test(question) && plan.mode === "lookup" && previousQuestion) {
+      const priorProfile = await lecturerProfileAnswer(previousQuestion.content, false, signal);
+      const resolvedProfile = await lecturerProfileAnswer(contextQuestion, web, signal);
+      if (priorProfile?.citations[0]?.url && priorProfile.citations[0].url === resolvedProfile?.citations[0]?.url) return resolvedProfile;
+    }
     // Khóa mới nêu rõ phải được ưu tiên, kể cả khi bộ phân loại giữ nhầm khóa cũ.
     if (
       questionCohort(question) &&

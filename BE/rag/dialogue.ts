@@ -3,6 +3,20 @@ import { normalize } from "./parser";
 
 export type Turn = { role: "user" | "assistant"; content: string };
 
+// Chỉ nhắc đúng lượt người dùng đã gửi trong hội thoại hiện tại, không đoán lịch sử khác.
+export function conversationRecall(question: string, history: Turn[]): string | null {
+  const q = normalize(question).replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim();
+  if (!/^(?:(?:toi|minh|em) )?(?:vua hoi gi|da hoi gi|hoi gi truoc do|hoi cau gi truoc do)$/.test(q)) return null;
+  const previous = [...history].reverse().find(turn => turn.role === "user")?.content.trim();
+  return previous ? `Trong cuộc hội thoại này, câu bạn vừa hỏi là: “${previous}”.` : "Trong cuộc hội thoại này bạn chưa hỏi câu nào trước đó.";
+}
+
+export function accountNameReply(question: string, accountName: string | undefined): string | null {
+  const q = normalize(question).replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim();
+  if (!/^(?:toi|minh|em) (?:ten (?:la )?gi|la ai)$/.test(q)) return null;
+  return accountName?.trim() ? `Tên hiển thị trong tài khoản của bạn là ${accountName.trim()}.` : "Tài khoản hiện chưa có tên hiển thị.";
+}
+
 // Hỏi địa chỉ email là tra cứu; chỉ soạn thư khi người dùng yêu cầu viết thư.
 export function asksForContact(question: string) {
   const q = normalize(question);

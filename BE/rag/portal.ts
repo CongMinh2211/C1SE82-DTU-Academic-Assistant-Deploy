@@ -7,6 +7,13 @@ import type { Answer } from "./answer";
 export function portalAnswer(question: string): Answer | null {
   const q = normalize(question);
   const english = isEnglish(question);
+  // Trả lời về ứng dụng hiện tại; không khẳng định đây là website chính thức của trường.
+  if (/^(?:day|trang nay|website nay|web nay|ung dung nay) (?:la )?(?:web ?site|website|web|ung dung|trang)?\s*(?:cua )?(?:truong nao|dai hoc nao)[?.! ]*$/.test(q)) {
+    const url = "https://duytan.edu.vn/";
+    return { status:"answered", reason:"application_identity", webStatus:"not_needed", retrieval:[],
+      content:`Đây là ứng dụng DTU Academic Assistant hỗ trợ thông tin học vụ cho sinh viên Đại học Duy Tân. Website chính thức của trường là ${url} [1].`,
+      citations:[{id:"1",chunkId:`web:${url}`,documentId:"web",revisionId:"web",title:"Đại học Duy Tân",version:1,page:1,pageEnd:1,section:"Trang chủ",quote:"Đại học Duy Tân",scope:"Trang chủ chính thức của Đại học Duy Tân",url,sourceTier:"official"}] };
+  }
   const payment = (/\b(?:nop|dong|thanh toan|chuyen khoan|noi dung)\b/.test(q) && /\bhoc phi\b/.test(q) && !/\b(?:bao nhieu|muc phi|don gia|gia tien|so tien|hoc phi la bao nhieu|noi dung|vietinbank|viettinbank|chuyen khoan)\b/.test(q)) || (english && /\b(?:pay|payment|paying)\b/.test(q) && /\b(?:tuition|fees?)\b/.test(q) && !/\b(?:how much|cost|amount|reference|description|content|bank|cash|transfer|deadline|account|vietinbank)\b/.test(q));
   const lookup = (/\b(?:xem|tra cuu|o dau|link|duong dan)\b/.test(q) && /\b(?:lich hoc|bang diem|dang ky mon|dang ky hoc phan)\b/.test(q)) || (english && /\b(?:where|view|find|check|access|register|enrol|enroll)\b/.test(q) && /\b(?:class schedule|class timetable|grades|transcript|register for courses|register for classes|enrol in courses|enroll in courses)\b/.test(q));
   if (!payment && !lookup) return null;

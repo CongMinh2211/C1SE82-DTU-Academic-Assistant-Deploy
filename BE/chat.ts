@@ -154,6 +154,7 @@ export async function chat(request: Request) {
       input.documentOnly ? false : input.useWeb,
       runSignal,
       input.documentOnly,
+      user.name,
     );
     // Bổ sung tài khoản ngân hàng có nguồn và phạm vi học kỳ phù hợp khi cần.
     const answer = input.documentOnly ? rawAnswer : attachBankDetails(input.question, rawAnswer);
