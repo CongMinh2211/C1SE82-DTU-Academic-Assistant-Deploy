@@ -22,13 +22,13 @@ const server = createServer(async (incoming, outgoing) => {
     // Chuyển luồng Node thành Web Request để giữ nguyên bộ giới hạn upload của handler.
     const request = new Request(url, { method, headers, signal: controller.signal, ...(!["GET", "HEAD"].includes(method) ? { body: Readable.toWeb(incoming), duplex: "half" } : {}) } as RequestInit);
     const response = await endpoint(async () => {
-      if (url.pathname.startsWith("/api/auth/")) return getAuth().handler(request);
-      if (url.pathname === "/api/public/auth-config") return { googleEnabled: !!googleOAuthConfig() || true, otpEnabled: process.env.EMAIL_OTP_ENABLED === "true", quickGoogleEnabled: true };
-      if (url.pathname === "/api/public/quick-google") {
-        if (method === "GET") return Response.json({ enabled: true, accounts: ["student", "admin"] });
-        const { handleQuickGoogleLogin } = await import("./quick-google");
-        return handleQuickGoogleLogin(request);
+      if (url.pathname === "/api/auth/sign-in/email" && method === "POST") {
+        const body = await request.clone().json().catch(() => null) as {email?: string} | null;
+        if (["admin.google@duytan.edu.vn", "sinhvien.google@duytan.edu.vn"].includes(body?.email?.trim().toLowerCase() || ""))
+          return Response.json({error: "Tài khoản đăng nhập nhanh đã ngừng hỗ trợ."}, {status: 403});
       }
+      if (url.pathname.startsWith("/api/auth/")) return getAuth().handler(request);
+      if (url.pathname === "/api/public/auth-config") return { googleEnabled: !!googleOAuthConfig(), otpEnabled: process.env.EMAIL_OTP_ENABLED === "true", quickGoogleEnabled: false };
       if (url.pathname.startsWith("/api/public/shares/") && method === "GET") return Response.json(await readConversationShare(decodeURIComponent(url.pathname.slice(19))));
       let route: Record<string, unknown>;
       if (url.pathname.startsWith("/api/app/")) route = await import("./routes/app/[...resource]/route");
