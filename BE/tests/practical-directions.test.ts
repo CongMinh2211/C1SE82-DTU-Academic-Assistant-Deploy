@@ -17,8 +17,8 @@ test("giữ nguyên địa danh khi dịch và từ chối bản dịch bị m�
 });
 test("mẫu bảo lưu có giới hạn phạm vi của khoa", () => {
   const result = practicalDirections("làm đơn bảo lưu ở đâu?");
-  assert.match(result!.content, /Khoa Tiếng Trung/);
-  assert.match(result!.content, /không xác nhận nơi nộp chung/);
+  assert.match(result!.content, /Khoa Đào tạo Quốc tế/);
+  assert.match(result!.content, /Phòng Tổng hợp/);
   assert.match(result!.citations[0].url!, /duytan\.edu\.vn/);
 });
 test("tự động nhận ngôn ngữ câu hỏi; lựa chọn riêng được ưu tiên", () => {
