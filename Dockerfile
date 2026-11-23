@@ -19,4 +19,6 @@ COPY --from=build --chown=node:node /app/tsconfig.json /app/package.json /app/pa
 RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 3000
-CMD ["sh","-c","exec node node_modules/next/dist/bin/next start FE --hostname 0.0.0.0 --port ${PORT:-10000}"]
+# Start the production orchestrator: Backend (:8001), worker, and Next.js (:PORT).
+# Running only `next start` leaves SSR/api proxy calls to 127.0.0.1:8001 refused.
+CMD ["node", "scripts/start-render.mjs"]
