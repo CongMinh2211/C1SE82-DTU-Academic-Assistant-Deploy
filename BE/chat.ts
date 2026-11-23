@@ -166,9 +166,10 @@ export async function chat(request: Request) {
           ? (english ? "\n\nWeb search is partially unavailable; this answer uses accessible sources." : "\n\nTìm kiếm toàn web đang gián đoạn; câu trả lời dùng các nguồn còn truy cập được.")
           : "";
     // Dịch sau khi câu trả lời đã gắn nguồn; khi không kiểm chứng được bản dịch, giữ nguyên bản gốc.
-    const { translateAnswer } = await import("./rag/translate-answer");
+    const { translateAnswer, answerLanguageForQuestion } = await import("./rag/translate-answer");
     const preference = await row<{answer_language:"auto"|"vi"|"en"|"hi"}>("SELECT answer_language FROM user_language_preferences WHERE user_id=?", user.id);
-    const rendered = await translateAnswer(answer.content + webNote, input.answerLanguage || preference?.answer_language || "auto", runSignal);
+    const targetLanguage = answerLanguageForQuestion(input.answerLanguage || preference?.answer_language || "auto", input.question);
+    const rendered = await translateAnswer(answer.content + webNote, targetLanguage, runSignal);
     const qualityNote = answer.review
       ? `;review:${JSON.stringify({
           attempt: answer.review.attempt,

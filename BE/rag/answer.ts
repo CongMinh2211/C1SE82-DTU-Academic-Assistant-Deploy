@@ -30,6 +30,7 @@ import { universityDate } from "./date";
 import { tuitionLookupSpec, tuitionTableAnswer } from "./tuition";
 import { examDirectoryAnswer } from "./exam-directory";
 import { portalAnswer } from "./portal";
+import { practicalDirections } from "./practical-directions";
 import { campusAnswer } from "./campus";
 import { facultyDirectoryAnswer } from "./faculty-directory";
 import { mydtuGuideAnswer } from "./mydtu-guide";
@@ -200,6 +201,8 @@ export async function answerQuestion(
   if (lecturer) return lecturer;
   const portal = portalAnswer(question);
   if (portal) return portal;
+  const directions = practicalDirections(question);
+  if (directions) return directions;
   const missingDetail = missingQuestionDetail(question, history);
   if (missingDetail) return { status:"clarification", content:missingDetail, citations:[], retrieval:[], reason:"needs_detail", webStatus:"not_needed" };
   const faculty = facultyDirectoryAnswer(question);
@@ -288,7 +291,12 @@ export async function answerQuestion(
               }
             : await planRequest(question, history, signal);
     // Câu Hindi cần câu truy vấn đã chuyển ngữ ngay cả khi là lượt đầu.
-    contextQuestion = history.length || /[\u0900-\u097f]/u.test(question) ? plan.resolvedQuestion : question;
+    contextQuestion = history.length || english || /[\u0900-\u097f]/u.test(question) ? plan.resolvedQuestion : question;
+    // Tra lại các đường trả lời theo nguồn sau khi đã chuyển câu hỏi đa ngôn ngữ.
+    if (plan.mode === "lookup" && contextQuestion !== question) {
+      const direct = practicalDirections(contextQuestion) || portalAnswer(contextQuestion);
+      if (direct) return direct;
+    }
     // Với câu Hindi hỏi tiếp một giảng viên, chỉ dùng đường tắt khi tên đã
     // chuyển ngữ và câu hỏi trước cùng xác định một hồ sơ đã công bố.
     if (/[\u0900-\u097f]/u.test(question) && plan.mode === "lookup" && previousQuestion) {
