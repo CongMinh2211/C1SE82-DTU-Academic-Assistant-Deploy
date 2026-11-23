@@ -56,15 +56,21 @@ export async function chat(request: Request) {
   const prior = await row<{
     conversation_id: string;
     status: string;
+    created_at: string;
   }>(
-    "SELECT m.conversation_id,m.status FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=? AND c.user_id=?",
+    "SELECT m.conversation_id,m.status,m.created_at FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=? AND c.user_id=?",
     input.requestId,
     user.id,
   );
   if (prior) {
     // Lượt đang xử lý báo xung đột; lượt xong trả lại lịch sử thay vì gọi AI lần nữa.
-    if (prior.status === "processing")
-      throw new HttpError(409, "Câu hỏi đang được xử lý.");
+    if (prior.status === "processing") {
+      const lease = await row<{ expires_at: number }>("SELECT expires_at FROM chat_leases WHERE user_id=?", user.id);
+      if (Date.now() - Date.parse(prior.created_at) < 150000 || (lease && Number(lease.expires_at) > Date.now()))
+        throw new HttpError(409, "Câu hỏi đang được xử lý.");
+      await db().prepare("UPDATE messages SET status='error',content=? WHERE id=? AND status='processing'").run("Câu hỏi trước bị gián đoạn. Vui lòng gửi lại.", input.requestId);
+      await db().prepare("UPDATE traces SET status='error',reason='interrupted' WHERE id=(SELECT trace_id FROM messages WHERE id=?) AND status='processing'").run(input.requestId);
+    }
     return await conversationDetail(prior.conversation_id, user.id);
   }
   // Áp dụng giới hạn theo người dùng sau khi loại các lần gửi lại cùng requestId.

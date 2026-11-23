@@ -250,17 +250,20 @@ export async function retrieve(question: string): Promise<Evidence[]> {
   lexical.forEach((r, i) => scores.set(r.id, 1 / (40 + i)));
   // Tìm theo ngữ nghĩa để hỗ trợ cách diễn đạt khác từ ngữ trong tài liệu.
   // Vector của cùng câu hỏi được tái sử dụng ngắn hạn; nguồn vẫn luôn tìm lại từ dữ liệu đang công bố.
+  let semantic: { id: string; score: number }[] = [];
+  if (process.env.RAG_LEXICAL_ONLY !== "true") {
   const queryVector = await queryVectors.get(
     question,
     async () => (await embedTexts([question], "query"))[0],
   );
   const vectorStore = await vectors();
-  const semantic = await vectorStore.query({
+  semantic = await vectorStore.query({
     indexName: vectorIndex,
     queryVector,
     topK: 100,
     filter: { revisionId: { $in: active } },
   });
+  }
   // Chỉ cộng điểm cho kết quả vector đạt ngưỡng tối thiểu; điểm này không phải xác suất đúng.
   semantic.forEach((r, i) => {
     if (r.score >= 0.66)
