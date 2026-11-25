@@ -1,16 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shouldAutoPlay, speechLanguage, speechText } from "../lib/voice-playback";
+import { matchingVoice, shouldAutoPlay, speechLanguage, speechText } from "../lib/voice-playback";
 
 test("văn bản đọc bỏ URL dài và số trích dẫn nhưng không sửa bản gốc", () => {
   const original = "Xem học phí [1] tại https://mydtu.duytan.edu.vn/";
-  assert.equal(speechText(original), "Xem học phí tại đường dẫn");
+  assert.equal(speechText(original), "Xem học phí tại");
   assert.match(original, /\[1\]/);
 });
 test("chọn ngôn ngữ đọc theo nội dung và tùy chọn dự phòng", () => {
   assert.equal(speechLanguage("Học phí bao nhiêu?", "en"), "vi-VN");
   assert.equal(speechLanguage("Where is my class?", "en"), "en-US");
   assert.equal(speechLanguage("नमस्ते", "vi"), "hi-IN");
+  assert.equal(speechLanguage("ế ộ", "en"), "vi-VN");
+  assert.equal(speechLanguage("học".normalize("NFD"), "en"), "vi-VN");
+});
+
+test("chọn đúng giọng theo ngôn ngữ và không dùng nhầm giọng tiếng Anh", () => {
+  const voices = [{ lang: "en-US" }, { lang: "vi_VN" }, { lang: "hi-IN" }];
+  assert.equal(matchingVoice(voices, "vi-VN")?.lang, "vi_VN");
+  assert.equal(matchingVoice(voices, "hi-IN")?.lang, "hi-IN");
+  assert.equal(matchingVoice([{ lang: "en-US" }], "vi-VN"), undefined);
 });
 
 test("chỉ đọc lượt voice mới đã hoàn tất, không phát lại lịch sử", () => {

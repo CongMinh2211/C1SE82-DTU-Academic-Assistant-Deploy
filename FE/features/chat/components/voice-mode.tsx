@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { VoiceInput } from "@/components/voice-input";
 import type { Message } from "@/lib/contracts";
-import { shouldAutoPlay, speechLanguage, speechText } from "@/lib/voice-playback";
+import { matchingVoice, shouldAutoPlay, speechLanguage, speechText } from "@/lib/voice-playback";
 
 type Props = {
   answer?: Message;
@@ -22,11 +22,13 @@ export function VoiceMode({ answer, language, enabled, onEnabledChange, requestI
   const [capturing, setCapturing] = useState(false);
   const [notice, setNotice] = useState("");
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
+  const playback = useRef(0);
   const text = answer && answer.status !== "error" && answer.status !== "processing" &&
     answer.citations.every(c => c.documentId !== "web") &&
     (answer.status !== "answered" || answer.citations.length > 0) ? speechText(answer.content) : "";
 
   const cancel = useCallback(() => {
+    playback.current++;
     const current = utterance.current;
     if (!current) return;
     utterance.current = null;
@@ -41,7 +43,7 @@ export function VoiceMode({ answer, language, enabled, onEnabledChange, requestI
     setNotice("");
   }
 
-  const readAnswer = useCallback(() => {
+  const readAnswer = useCallback(async () => {
     if (!text) return;
     const synth = window.speechSynthesis;
     if (!synth || typeof SpeechSynthesisUtterance === "undefined") {
@@ -49,11 +51,29 @@ export function VoiceMode({ answer, language, enabled, onEnabledChange, requestI
       return;
     }
     cancel();
-    const current = new SpeechSynthesisUtterance(text);
-    utterance.current = current;
-    current.lang = speechLanguage(text, language);
-    current.voice = synth.getVoices().find(v => v.lang.toLowerCase().startsWith(current.lang.slice(0, 2))) ?? null;
+    const attempt = playback.current;
     setReading(true);
+    setNotice("Đang chuẩn bị giọng đọc…");
+    const targetLanguage = speechLanguage(text, language);
+    if (!matchingVoice(synth.getVoices(), targetLanguage)) {
+      await new Promise<void>((resolve) => {
+        const done = () => { window.clearTimeout(timer); synth.removeEventListener("voiceschanged", changed); resolve(); };
+        const changed = () => { if (matchingVoice(synth.getVoices(), targetLanguage)) done(); };
+        const timer = window.setTimeout(done, 1500);
+        synth.addEventListener("voiceschanged", changed);
+      });
+    }
+    if (playback.current !== attempt) return;
+    const current = new SpeechSynthesisUtterance(text);
+    current.lang = targetLanguage;
+    const voice = matchingVoice(synth.getVoices(), current.lang);
+    if (!voice) {
+      setReading(false);
+      setNotice(`Thiết bị chưa có giọng đọc ${current.lang}. Hãy thêm giọng ngôn ngữ này trong cài đặt thiết bị hoặc thử trình duyệt khác.`);
+      return;
+    }
+    current.voice = voice;
+    utterance.current = current;
     setNotice("Đang chuẩn bị đọc…");
     current.onstart = () => setNotice("Đang đọc câu trả lời.");
     current.onend = () => {
@@ -73,7 +93,7 @@ export function VoiceMode({ answer, language, enabled, onEnabledChange, requestI
     if (!shouldAutoPlay(enabled, busy, requestId, answer?.id, answer?.status)) return;
     const timer = window.setTimeout(() => {
       onHandled();
-      if (!capturing) readAnswer();
+      if (!capturing) void readAnswer();
     }, 0);
     return () => window.clearTimeout(timer);
   }, [enabled, busy, requestId, answer?.id, answer?.status, capturing, onHandled, readAnswer]);
