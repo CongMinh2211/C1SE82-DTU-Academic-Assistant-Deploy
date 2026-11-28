@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tuitionFollowUp, explicitTopicShift } from "../rag/context";
+import { tuitionFollowUp, explicitTopicShift, lookupFollowUp } from "../rag/context";
 import { questionCohorts, questionMajorCodes } from "../rag/retrieve";
 
 type Turn = { role: "user" | "assistant"; content: string };
@@ -45,4 +45,13 @@ test("thay mã ngành và hỏi năm mới nhất không tái sử dụng năm c
 test("không biến câu hỏi thanh toán cụ thể thành câu hỏi bảng giá", () => {
   const history = [user("Học phí K29 ngành Marketing bao nhiêu?"), ai("...")];
   assert.equal(tuitionFollowUp("cách nộp học phí thế nào?", history), null);
+});
+
+
+test("yêu cầu tra lại giữ chủ đề gần nhất, chủ đề mới không bị ghép", () => {
+  const history = [user("code html sao"), ai("Bạn muốn gì?"), user("mẫu đăng ký học phần"), ai("Chưa tìm thấy nguồn.")];
+  assert.match(lookupFollowUp("tra cứu ra cho tôi đi", history)!, /mẫu đăng ký học phần/);
+  assert.match(lookupFollowUp("cụ thể", history)!, /mẫu đăng ký học phần/);
+  assert.equal(lookupFollowUp("code html", history), null);
+  assert.equal(lookupFollowUp("tra cứu ra cho tôi đi", []), null);
 });

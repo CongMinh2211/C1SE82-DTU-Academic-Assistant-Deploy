@@ -93,3 +93,11 @@ export function vagueWithoutContext(question: string, history: Turn[]) {
     )
   );
 }
+
+// Chỉ nối lượt yêu cầu tra lại rõ ràng vào câu hỏi thực chất gần nhất của người dùng.
+export function lookupFollowUp(question: string, history: Turn[]) {
+  const q = normalize(question).replace(/[?!.,:;]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!/^(?:tra cuu(?: ra)?(?: cho (?:toi|minh|em))?(?: di)?|tim(?: ra)?(?: cho (?:toi|minh|em))?(?: di)?|cu the(?: hon)?|noi ro hon)$/.test(q)) return null;
+  const prior = [...history].reverse().find(t => t.role === "user" && topics(t.content).length > 0);
+  return prior ? `${prior.content} — ${question}` : null;
+}

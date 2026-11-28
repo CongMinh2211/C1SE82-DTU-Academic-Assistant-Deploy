@@ -28,6 +28,8 @@ export function asksForContact(question: string) {
 
 export function obviousStudyTask(question: string, history: Turn[]) {
   const q = normalize(question);
+  // Yêu cầu viết code là hỗ trợ học tập, không phải tra cứu biểu mẫu chính thức.
+  if (/\b(?:html|css|javascript)\b/.test(q) && /\b(?:code|viet|tao|lap trinh|huong dan|sao|how)\b/.test(q)) return true;
   if (
     /\b(?:soan|viet|draft|write)\b[\s\S]*\b(?:email|mail)\b/.test(q) &&
     !/\b(?:trich nguon|citation|sources?|theo quy dinh|according to|policy|quy dinh)\b/.test(

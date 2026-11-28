@@ -25,6 +25,7 @@ import {
   explicitTopicShift,
   tuitionFollowUp,
   vagueWithoutContext,
+  lookupFollowUp,
 } from "./context";
 import { universityDate } from "./date";
 import { tuitionLookupSpec, tuitionTableAnswer } from "./tuition";
@@ -265,7 +266,9 @@ export async function answerQuestion(
   let searchQueries: string[] = [];
   try {
     const tuitionContext = tuitionFollowUp(question, history);
+    const lookupContext = lookupFollowUp(question, history);
     const plan =
+      lookupContext ? { mode: "lookup" as const, reply: "", resolvedQuestion: lookupContext, searchQueries: [lookupContext.slice(0, 120)] } :
       asksForContact(question) ||
       (explicitTopicShift(question, history) &&
         !obviousStudyTask(question, history))

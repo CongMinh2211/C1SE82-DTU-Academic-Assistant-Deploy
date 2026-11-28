@@ -39,6 +39,14 @@ export function academicModel() {
       process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
       "https://generativelanguage.googleapis.com/v1beta/openai",
     );
+  // SaveGate dùng GPT hiện có; Xkiro chỉ được gọi khi nhà cung cấp chính thất bại.
+  if (process.env.AI_PRIMARY_PROVIDER === "savegate") {
+    add("savegate", requiredEnv("SAVEGATE_API_KEY"), process.env.SAVEGATE_MODEL || "gpt-5.4", process.env.SAVEGATE_BASE_URL || "https://api.savegate.ai/v1");
+    providers[0].modelSettings.timeout.stepMs = 60000;
+    add("xkiro", process.env.XKIRO_API_KEY, process.env.XKIRO_MODEL || "qwen/qwen3.8-max:free", process.env.XKIRO_BASE_URL || "https://api.xkiro.com/v1");
+    if (providers[1]) providers[1].modelSettings.timeout.stepMs = 60000;
+    return providers;
+  }
   // Thứ tự mảng quyết định dịch vụ chính và dịch vụ dự phòng khi lời gọi thất bại.
   if (process.env.AI_PRIMARY_PROVIDER === "openai") {
     openai();

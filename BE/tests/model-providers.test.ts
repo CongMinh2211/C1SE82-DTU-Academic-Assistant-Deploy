@@ -36,3 +36,21 @@ test("thứ tự dự phòng và nhà cung cấp thiếu key", () => {
     });
   }
 });
+
+
+test("SaveGate GPT là chính và Xkiro chỉ là dự phòng khi được cấu hình", () => {
+  const keys = ["AI_PRIMARY_PROVIDER", "SAVEGATE_API_KEY", "SAVEGATE_MODEL", "XKIRO_API_KEY"] as const;
+  const before = keys.map(key => process.env[key]);
+  try {
+    process.env.AI_PRIMARY_PROVIDER = "savegate";
+    process.env.SAVEGATE_API_KEY = "fake-gpt";
+    process.env.SAVEGATE_MODEL = "gpt-test";
+    process.env.XKIRO_API_KEY = "fake-xkiro";
+    const providers = academicModel();
+    assert.deepEqual(providers.map(x => x.id), ["savegate", "xkiro"]);
+    assert.equal(providers[0].model.id, "custom/gpt-test");
+    assert.equal(providers[1].model.url, "https://api.xkiro.com/v1");
+    delete process.env.XKIRO_API_KEY;
+    assert.deepEqual(academicModel().map(x => x.id), ["savegate"]);
+  } finally { keys.forEach((key, i) => { if (before[i] === undefined) delete process.env[key]; else process.env[key] = before[i]; }); }
+});
