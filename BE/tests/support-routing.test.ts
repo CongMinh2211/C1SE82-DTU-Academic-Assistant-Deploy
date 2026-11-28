@@ -25,3 +25,9 @@ test("clear learning and user-data tasks cannot fall into institutional retrieva
     true,
   );
 });
+
+
+test("code HTML là yêu cầu học tập mới, không nối sang biểu mẫu học phần", () => {
+  assert.equal(obviousStudyTask("code html", [{role:"user",content:"mẫu đăng ký học phần"}]), true);
+  assert.equal(obviousStudyTask("viết code html mẫu đăng ký học phần", []), true);
+});
